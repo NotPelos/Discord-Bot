@@ -1,0 +1,66 @@
+{
+    "tipoSanciones": [
+        {
+            "name": "Aviso",
+            "value": "Aviso"
+        },
+        {
+            "name": "Falta",
+            "value": "Falta"
+        },
+        {
+            "name": "Disband",
+            "value": "Disband"
+        }
+    ],
+    "Bandas": [
+        {
+            "name": "Ballas",
+            "value": "Ballas"
+        },
+        {
+            "name": "Families",
+            "value": "Families"
+        },
+        {
+            "name": "Los Santos Vagos",
+            "value": "Los Santos Vagos"
+        },
+        {
+            "name": "Marabunta",
+            "value": "Marabunta"
+        },
+        {
+            "name": "Red Jackets",
+            "value": "Red Jackets"
+        },
+        {
+            "name": "Cartel La Cruz",
+            "value": "Cartel La Cruz"
+        },
+        {
+            "name": "The Lost",
+            "value": "The Lost"
+        },
+        {
+            "name": "AOD",
+            "value": "AOD"
+        },
+        {
+            "name": "Industrias Trevor",
+            "value": "Industrias Trevor"
+        },
+        {
+            "name": "Familia O'Neil",
+            "value": "Familia O'Neil"
+        },
+        {
+            "name": "Irish Sons",
+            "value": "Irish Sons"
+        },
+        {
+            "name": "No Breaks",
+            "value": "No Breaks"
+        }
+    ]
+}
