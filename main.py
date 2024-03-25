@@ -77,6 +77,10 @@ async def on_ready():
     name="crearbanda",
     description="Crea una banda con el nombre y el color especificados.",
 )
+@app_commands.describe(
+    nombre="Nombre de la banda",
+    color_hex="Color en hexadecimal sin el #"
+)
 @es_admin()  # Comprueba si tiene rol de admin
 async def crear_banda(interaction: discord.Interaction, nombre: str, color_hex: str):
     # Convertir el código hexadecimal a un objeto Colour
