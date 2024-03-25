@@ -336,6 +336,19 @@ async def sancion(
             "El canal 'sanciones' no existe.", ephemeral=True, delete_after=5
         )
         return
+    
+        # Actualiza el registro de sanciones
+    if tipo != "Disband":
+        with open("sanciones.json", "r+", encoding="utf-8") as file:
+            sanciones = json.load(file)
+            if banda not in sanciones:
+                # Asegúrate de inicializar solo los contadores que necesitas
+                sanciones[banda] = {"Aviso": 0, "Falta": 0}
+            if tipo in sanciones[banda]:  # Verifica si el tipo de sanción debe contarse
+                sanciones[banda][tipo] += 1
+            file.seek(0)
+            json.dump(sanciones, file, indent=4, ensure_ascii=False)
+            file.truncate()
 
     # Envía el embed en el canal de sanciones
     await sanciones_channel.send(embed=embed)
@@ -345,6 +358,29 @@ async def sancion(
         ephemeral=True,
         delete_after=5,
     )
+    
+@bot.tree.command(
+    name="contadorsancion",
+    description="Muestra el contador de sanciones para una banda específica."
+)
+@app_commands.describe(
+    banda="Nombre de la banda para ver su contador de sanciones."
+)
+@app_commands.choices(
+    banda=[app_commands.Choice(name=bandas["name"], value=bandas["value"]) for bandas in tipo_bandas],
+)
+async def contador_sancion(interaction: discord.Interaction, banda: str):
+    with open("sanciones.json", "r", encoding="utf-8") as file:
+        sanciones = json.load(file)
+    
+    if banda in sanciones:
+        msg = f"Sanciones para {banda}: \n"
+        for tipo, cantidad in sanciones[banda].items():
+            msg += f"{tipo}: {cantidad}\n"
+    else:
+        msg = "Esta banda no tiene sanciones registradas."
+
+    await interaction.response.send_message(msg, ephemeral=True)
 
 
 # Inicia tu bot con el token proporcionado
