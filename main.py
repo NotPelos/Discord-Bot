@@ -1,22 +1,33 @@
 import discord
 from discord.ext import commands
-import asyncio
-from discord import app_commands
-from discord.app_commands import Choice
+from discord import Interaction, SelectOption, app_commands
+from discord.ui import View, Select, Button, Modal, TextInput
 import json
 
-intents = discord.Intents.all()
-bot = commands.Bot(command_prefix="!", intents=intents)
-
+# Cargar configuraciones
 with open("parametros.json", "r", encoding="utf-8") as f:
     config = json.load(f)
 with open("secrets.json", "r", encoding="utf-8") as e:
     secrets = json.load(e)
 
+# Configurar bot e intents
+intents = discord.Intents.all()
+bot = commands.Bot(command_prefix="!", intents=intents)
+
+# Variables globales
 tipo_sanciones = config["tipoSanciones"]
 tipo_bandas = config["Bandas"]
 TOKEN = secrets["TOKEN"]
 ID_Discord = secrets["ID_Servidor"]
+CHANNEL_ID = 1215111764669112392  # ID del canal específico para registrar ventas
+ChannelBand = 1215111764669112392
+
+
+# Funciones de utilidad
+def cargar_bandas():
+    with open("parametros.json", "r", encoding="utf-8") as file:
+        data = json.load(file)
+        return data["Bandas"]
 
 
 def actualizar_bandas(nombre_banda):
@@ -29,25 +40,153 @@ def actualizar_bandas(nombre_banda):
 
 
 def es_admin():
-
     async def predicate(interaction: discord.Interaction):
         return interaction.user.guild_permissions.administrator
 
     return discord.app_commands.check(predicate)
 
 
+# Clase para el menú de selección
+class BandasSelect(Select):
+    def __init__(self, bandas):
+        options = [
+            SelectOption(label=banda["name"], value=banda["value"]) for banda in bandas
+        ]
+        super().__init__(
+            placeholder="Elige una banda...",
+            min_values=1,
+            max_values=1,
+            options=options,
+        )
+
+    async def callback(self, interaction: Interaction):
+        role_name = self.values[0]
+        role = discord.utils.get(interaction.guild.roles, name=role_name)
+        if role:
+            await interaction.user.add_roles(role)
+            await interaction.response.send_message(
+                f"Rol '{role_name}' asignado correctamente.", ephemeral=True
+            )
+        else:
+            await interaction.response.send_message(
+                "Rol no encontrado.", ephemeral=True
+            )
+
+
+# Clase para la vista que contiene el Select
+class BandasView(View):
+    def __init__(self, bandas):
+        super().__init__(timeout=None)
+        self.add_item(BandasSelect(bandas))
+
+
+# Clase para el formulario de ventas
+class VentaModal(Modal):
+    def __init__(self, title="Registrar Venta"):
+        super().__init__(title=title)
+        self.venta_para = TextInput(
+            label="Venta para", placeholder="Nombre del comprador"
+        )
+        self.articulos = TextInput(
+            label="Artículos",
+            placeholder="Descripción del artículo 1\nDescripción del artículo 2\n...",
+            style=discord.TextStyle.paragraph,
+        )
+        self.cantidades = TextInput(
+            label="Cantidades",
+            placeholder="Cantidad del artículo 1\nCantidad del artículo 2\n...",
+            style=discord.TextStyle.paragraph,
+        )
+        self.precios = TextInput(
+            label="Precios",
+            placeholder="Precio del artículo 1\nPrecio del artículo 2\n...",
+            style=discord.TextStyle.paragraph,
+        )
+
+        self.add_item(self.venta_para)
+        self.add_item(self.articulos)
+        self.add_item(self.cantidades)
+        self.add_item(self.precios)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        articulos = self.articulos.value.split("\n")
+        cantidades = self.cantidades.value.split("\n")
+        precios = self.precios.value.split("\n")
+
+        articulos_vendidos = []
+        total = 0.0
+
+        for articulo, cantidad, precio in zip(articulos, cantidades, precios):
+            cantidad = int(cantidad)
+            precio = float(precio)
+            subtotal = cantidad * precio
+            total += subtotal
+            articulos_vendidos.append(
+                f"{articulo}: {cantidad} unidad(es) a ${precio:.2f} cada una"
+            )
+
+        articulos_vendidos_text = "\n".join(articulos_vendidos)
+
+        user_roles = interaction.user.roles
+        ventas_channel = None
+        for role in user_roles:
+            for channel in interaction.guild.text_channels:
+                if (
+                    "ventas" in channel.name
+                    and channel.permissions_for(role).read_messages
+                ):
+                    ventas_channel = channel
+                    break
+            if ventas_channel:
+                break
+
+        if ventas_channel:
+            embed = discord.Embed(
+                title="Nueva Venta Registrada", color=discord.Colour.green()
+            )
+            embed.add_field(
+                name="Venta para", value=self.venta_para.value, inline=False
+            )
+            embed.add_field(
+                name="Articulos vendidos", value=articulos_vendidos_text, inline=False
+            )
+            embed.add_field(name="Total", value=f"${total:.2f}", inline=False)
+            await ventas_channel.send(embed=embed)
+            await interaction.response.send_message(
+                "Venta registrada exitosamente.", ephemeral=True, delete_after=5
+            )
+        else:
+            await interaction.response.send_message(
+                "No se pudo encontrar el canal de ventas correspondiente.",
+                ephemeral=True,
+            )
+
+
+# Clase para la vista del botón de registro de ventas
+class VentaView(View):
+    def __init__(self):
+        super().__init__(timeout=None)
+        registrar_button = Button(
+            label="Registrar Venta", style=discord.ButtonStyle.primary
+        )
+        registrar_button.callback = self.registrar_venta
+        self.add_item(registrar_button)
+
+    async def registrar_venta(self, interaction: Interaction):
+        await interaction.response.send_modal(VentaModal())
+
+
+# Manejo de errores de comandos de aplicación
 @bot.event
 async def on_app_command_error(
     interaction: discord.Interaction, error: discord.app_commands.AppCommandError
 ):
     if isinstance(error, discord.app_commands.errors.CheckFailure):
         if interaction.response.is_done():
-            # Si ya se envió una respuesta inicial, se utiliza followup para enviar mensajes adicionales
             await interaction.followup.send(
                 "No tienes permiso para ejecutar este comando.", ephemeral=True
             )
         else:
-            # Si no se ha enviado una respuesta inicial, se utiliza send_message para responder
             await interaction.response.send_message(
                 "No tienes permiso para ejecutar este comando.", ephemeral=True
             )
@@ -55,35 +194,58 @@ async def on_app_command_error(
         print(f"Un error ocurrió al ejecutar un comando: {error}")
 
 
+# Evento on_ready
 @bot.event
 async def on_ready():
-    print(f"Logged in as miau")
+    print(f"Logged in as {bot.user.name}")
+    search_text = "Selecciona tu banda:"
+    channel = bot.get_channel(ChannelBand)
+    message_found = None
+
+    async for message in channel.history(limit=100):
+        if message.author == bot.user and search_text in message.content:
+            message_found = message
+            break
+
+    if message_found:
+        await message_found.delete()
+        print("Mensaje antiguo encontrado y eliminado.")
+
+    bandas = cargar_bandas()
+    view = BandasView(bandas)
+    await channel.send("Selecciona tu banda:", view=view)
+    print("Nuevo mensaje con select box enviado.")
+
+    # Enviar el mensaje con el botón para registrar ventas
+    channel = bot.get_channel(CHANNEL_ID)
+    message_text = "Pulsa en el botón para registrar tus ventas"
+    async for message in channel.history(limit=100):
+        if message.author == bot.user and message_text in message.content:
+            await message.delete()
+
+    ventas_view = VentaView()
+    await channel.send(message_text, view=ventas_view)
+    print("Mensaje con botón de registro de ventas enviado.")
+
     try:
-        # Sincronización en un canal específico
-        guild_id = (
-            ID_Discord  # El ID del canal, tienes que tener DC en modo desarrollador
-        )
+        guild_id = ID_Discord
         guild = discord.Object(id=guild_id)
         await bot.tree.sync(guild=guild)
         print(f"Synced commands to guild ID {guild_id}")
-        # Sincronizacion de forma global
-        # await bot.tree.sync()
     except Exception as e:
         print(e)
-    await bot.tree.sync()
 
 
+# Comando para crear bandas
 @bot.tree.command(
     name="crearbanda",
     description="Crea una banda con el nombre y el color especificados.",
 )
 @app_commands.describe(
-    nombre="Nombre de la banda",
-    color_hex="Color en hexadecimal sin el #"
+    nombre="Nombre de la banda", color_hex="Color en hexadecimal sin el #"
 )
-@es_admin()  # Comprueba si tiene rol de admin
+@es_admin()
 async def crear_banda(interaction: discord.Interaction, nombre: str, color_hex: str):
-    # Convertir el código hexadecimal a un objeto Colour
     try:
         color = discord.Colour(int(color_hex.lstrip("#"), 16))
     except ValueError:
@@ -94,13 +256,9 @@ async def crear_banda(interaction: discord.Interaction, nombre: str, color_hex: 
         )
         return
 
-    # Crear la categoría
     categoria = await interaction.guild.create_category(name=nombre)
-
-    # Crear el rol con el color proporcionado
     rol = await interaction.guild.create_role(name=nombre, color=color)
 
-    # Establecer permisos de canal
     overwrites = {
         interaction.guild.default_role: discord.PermissionOverwrite(
             read_messages=False
@@ -108,7 +266,6 @@ async def crear_banda(interaction: discord.Interaction, nombre: str, color_hex: 
         rol: discord.PermissionOverwrite(read_messages=True),
     }
 
-    # Crear los canales con los permisos establecidos
     await categoria.create_text_channel(name="lideres-staff", overwrites=overwrites)
     await categoria.create_text_channel(name="entradas-salidas", overwrites=overwrites)
     await categoria.create_text_channel(name="ventas", overwrites=overwrites)
@@ -120,6 +277,7 @@ async def crear_banda(interaction: discord.Interaction, nombre: str, color_hex: 
     )
 
 
+# Comando para eliminar bandas
 @bot.tree.command(
     name="eliminarbanda",
     description="Elimina una banda, el rol y expulsa a quienes tengan ese rol",
@@ -130,16 +288,13 @@ async def crear_banda(interaction: discord.Interaction, nombre: str, color_hex: 
         for banda in config["Bandas"]
     ]
 )
-@es_admin()  # Comprueba si tiene rol de admin
+@es_admin()
 async def eliminar_banda(
     interaction: discord.Interaction, banda: app_commands.Choice[str]
 ):
     nombre = banda.value
     guild = interaction.guild
-    # Buscar la categoría por nombre
     categoria = discord.utils.get(interaction.guild.categories, name=nombre)
-
-    # También buscar el rol por nombre
     rol = discord.utils.get(interaction.guild.roles, name=nombre)
 
     if categoria is None and rol is None:
@@ -150,13 +305,9 @@ async def eliminar_banda(
         )
         return
 
-    # Expulsar miembros con el rol
     if rol is not None:
         for member in list(guild.members):
-            # Verificar si el miembro solo tiene el rol específico
-            if (
-                len(member.roles) == 2 and rol in member.roles
-            ):  # Discord siempre incluye un "rol @everyone" invisible, por eso se comprueba con 2
+            if len(member.roles) == 2 and rol in member.roles:
                 try:
                     await member.kick(reason=f"Eliminación de la banda {nombre}")
                 except discord.Forbidden:
@@ -178,12 +329,22 @@ async def eliminar_banda(
     if rol is not None:
         await rol.delete()
 
-        # Después de eliminar la banda en Discord...
     config["Bandas"] = [banda for banda in config["Bandas"] if banda["value"] != nombre]
-
-    # Guardar los cambios en parametros.json
     with open("parametros.json", "w", encoding="utf-8") as f:
         json.dump(config, f, ensure_ascii=False, indent=4)
+
+    try:
+        with open("sanciones.json", "r+", encoding="utf-8") as file:
+            sanciones = json.load(file)
+            if nombre in sanciones:
+                del sanciones[nombre]
+                file.seek(0)
+                json.dump(sanciones, file, indent=4, ensure_ascii=False)
+                file.truncate()
+    except FileNotFoundError:
+        print("El archivo sanciones.json no fue encontrado.")
+    except Exception as e:
+        print(f"Error al actualizar sanciones.json: {e}")
 
     await interaction.response.send_message(
         f"Se ha eliminado la banda y rol '{nombre}' con éxito.",
@@ -192,6 +353,7 @@ async def eliminar_banda(
     )
 
 
+# Comando de anuncio
 @bot.tree.command(
     name="anuncio",
     description="Lanza un comunicado en el canal de comunicados mencionando a todos, utilizar \n para saltos de linea",
@@ -210,16 +372,13 @@ async def anuncio(interaction: discord.Interaction, *, titulo: str, contenido: s
         )
         return
 
-    # Formatea el contenido para crear saltos de línea donde sea necesario
     contenido_formateado = contenido.replace("\\n", "\n")
-
     embed = discord.Embed(
         title=titulo, description=contenido_formateado, color=discord.Colour.blue()
     )
     embed.set_footer(text="Grupo Oasis | Ilícito")
 
     try:
-        # Enviar el mensaje @everyone en el canal comunicados
         await comunicados_channel.send(
             content="@everyone",
             embed=embed,
@@ -244,31 +403,25 @@ async def anuncio(interaction: discord.Interaction, *, titulo: str, contenido: s
         )
 
 
+# Autocompletar para bandas
 async def autocompletar_bandas(interaction: discord.Interaction, current: str):
-    # Este decorador permite a la función ser una función de autocompletado para discord.py
-    roles = (
-        await interaction.guild.fetch_roles()
-    )  # Obtiene todos los roles del servidor
+    roles = await interaction.guild.fetch_roles()
     return [
-        app_commands.Choice(
-            name=role.name, value=role.name
-        )  # Usa el nombre del rol para ambas propiedades por simplicidad
+        app_commands.Choice(name=role.name, value=role.name)
         for role in roles
         if current.lower() in role.name.lower()
-    ][
-        :25
-    ]  # Discord solo permite 25 opciones de autocompletado
+    ][:25]
 
 
+# Comando para asignar banda
 @bot.tree.command(
     name="darbanda", description="Asigna un usuario a un rol existente en el servidor."
 )
-@es_admin()  # Asegúrate de que solo los administradores puedan ejecutar este comando.
+@es_admin()
 @app_commands.autocomplete(banda=autocompletar_bandas)
 async def dar_banda(
     interaction: discord.Interaction, usuario: discord.User, banda: str
 ):
-    # La función de autocompletado manejará la sugerencia de los nombres de los roles
     rol = discord.utils.get(interaction.guild.roles, name=banda)
     if rol is None:
         await interaction.response.send_message(
@@ -290,10 +443,11 @@ async def dar_banda(
     )
 
 
+# Comando para sancionar
 @bot.tree.command(
     name="sancion", description="Comando para comunicar una sancion a un usuario."
 )
-@es_admin()  # Asegúrate de que solo los administradores puedan ejecutar este comando.
+@es_admin()
 @app_commands.describe(
     tipo="Elige entre Aviso, Falta o Disband.",
     banda="Nombre de las bandas de la lista",
@@ -309,20 +463,13 @@ async def dar_banda(
         for bandas in tipo_bandas
     ],
 )
-async def sancion(
-    interaction: discord.Interaction, tipo: str, *, banda: str, motivo: str
-):
-    # Define los colores posibles en función del tipo de sanción
+async def sancion(interaction: discord.Interaction, tipo: str, banda: str, motivo: str):
     colores = {
         "Aviso": discord.Colour.orange(),
         "Falta": discord.Colour.red(),
         "Disband": discord.Colour(0x000000),
     }
-
-    # Selecciona el color basado en el tipo de sanción
     color_embed = colores[tipo]
-
-    # Crea el embed con el texto y el color correspondiente
     embed = discord.Embed(
         title="**Sanción**",
         description=f"La banda {banda} ha recibido un/a **{tipo}** por: {motivo}",
@@ -330,53 +477,50 @@ async def sancion(
     )
     embed.set_footer(text="Grupo Oasis | Ilícito")
 
-    # Encuentra el canal de "sanciones" en el servidor
     sanciones_channel = discord.utils.get(
         interaction.guild.text_channels, name="sanciones"
     )
     if sanciones_channel is None:
-        # Si el canal no existe, informa al usuario y no hagas nada más
         await interaction.response.send_message(
             "El canal 'sanciones' no existe.", ephemeral=True, delete_after=5
         )
         return
-    
-        # Actualiza el registro de sanciones
+
     if tipo != "Disband":
         with open("sanciones.json", "r+", encoding="utf-8") as file:
             sanciones = json.load(file)
             if banda not in sanciones:
-                # Asegúrate de inicializar solo los contadores que necesitas
                 sanciones[banda] = {"Aviso": 0, "Falta": 0}
-            if tipo in sanciones[banda]:  # Verifica si el tipo de sanción debe contarse
+            if tipo in sanciones[banda]:
                 sanciones[banda][tipo] += 1
             file.seek(0)
             json.dump(sanciones, file, indent=4, ensure_ascii=False)
             file.truncate()
 
-    # Envía el embed en el canal de sanciones
     await sanciones_channel.send(embed=embed)
-    # Confirma que el mensaje fue enviado
     await interaction.response.send_message(
         f"La sanción ha sido publicada en el canal 'sanciones'.",
         ephemeral=True,
         delete_after=5,
     )
-    
+
+
+# Comando para mostrar el contador de sanciones
 @bot.tree.command(
     name="contadorsancion",
-    description="Muestra el contador de sanciones para una banda específica."
+    description="Muestra el contador de sanciones para una banda específica.",
 )
-@app_commands.describe(
-    banda="Nombre de la banda para ver su contador de sanciones."
-)
+@app_commands.describe(banda="Nombre de la banda para ver su contador de sanciones.")
 @app_commands.choices(
-    banda=[app_commands.Choice(name=bandas["name"], value=bandas["value"]) for bandas in tipo_bandas],
+    banda=[
+        app_commands.Choice(name=bandas["name"], value=bandas["value"])
+        for bandas in tipo_bandas
+    ]
 )
 async def contador_sancion(interaction: discord.Interaction, banda: str):
     with open("sanciones.json", "r", encoding="utf-8") as file:
         sanciones = json.load(file)
-    
+
     if banda in sanciones:
         msg = f"Sanciones para {banda}: \n"
         for tipo, cantidad in sanciones[banda].items():
@@ -387,5 +531,5 @@ async def contador_sancion(interaction: discord.Interaction, banda: str):
     await interaction.response.send_message(msg, ephemeral=True)
 
 
-# Inicia tu bot con el token proporcionado
+# Inicia el bot con el token proporcionado
 bot.run(TOKEN)

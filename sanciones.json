@@ -1,17 +1,9 @@
 {
-    "Ballas": {
-        "Aviso": 1,
-        "Falta": 1
-    },
-    "Families": {
+    "Industrias Trevor": {
         "Aviso": 0,
         "Falta": 0
     },
-    "Los Santos Vagos": {
-        "Aviso": 0,
-        "Falta": 0
-    },
-    "Marabunta": {
+    "Familia Bonelli": {
         "Aviso": 0,
         "Falta": 0
     },
@@ -19,32 +11,52 @@
         "Aviso": 0,
         "Falta": 0
     },
-    "Cartel La Cruz": {
+    "Marabunta": {
         "Aviso": 0,
         "Falta": 0
     },
-    "The Lost": {
+    "Orange Black Juice": {
+        "Aviso": 0,
+        "Falta": 1
+    },
+    "Original Ballas": {
         "Aviso": 0,
         "Falta": 0
     },
-    "Industrias Trevor": {
+    "Los Santos Vagos": {
         "Aviso": 0,
         "Falta": 0
     },
-    "Familia O'Neil": {
+    "Metal Jackets MC": {
         "Aviso": 0,
         "Falta": 0
     },
-    "Irish Sons": {
-        "Aviso": 1,
-        "Falta": 0
-    },
-    "No Breaks": {
+    "Kiodai": {
         "Aviso": 0,
         "Falta": 0
     },
-    "AOD": {
-        "Aviso": 2,
+    "Royal Order": {
+        "Aviso": 0,
+        "Falta": 0
+    },
+    "Shadow Femme": {
+        "Aviso": 0,
+        "Falta": 0
+    },
+    "The Lost MC Sandy  Shores": {
+        "Aviso": 0,
+        "Falta": 0
+    },
+    "Purple Ice": {
+        "Aviso": 0,
+        "Falta": 0
+    },
+    "83 Criminals Gang": {
+        "Aviso": 0,
+        "Falta": 0
+    },
+    "BlackWell": {
+        "Aviso": 0,
         "Falta": 0
     }
 }

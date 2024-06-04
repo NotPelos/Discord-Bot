@@ -15,16 +15,12 @@
     ],
     "Bandas": [
         {
-            "name": "Ballas",
-            "value": "Ballas"
+            "name": "AOD",
+            "value": "AOD"
         },
         {
-            "name": "Families",
-            "value": "Families"
-        },
-        {
-            "name": "Los Santos Vagos",
-            "value": "Los Santos Vagos"
+            "name": "Industrias Trevor",
+            "value": "Industrias Trevor"
         },
         {
             "name": "Marabunta",
@@ -35,32 +31,52 @@
             "value": "Red Jackets"
         },
         {
-            "name": "Cartel La Cruz",
-            "value": "Cartel La Cruz"
+            "name": "Familia Bonelli",
+            "value": "Familia Bonelli"
         },
         {
-            "name": "The Lost",
-            "value": "The Lost"
+            "name": "Original Ballas",
+            "value": "Original Ballas"
         },
         {
-            "name": "AOD",
-            "value": "AOD"
+            "name": "Los Santos Vagos",
+            "value": "Los Santos Vagos"
         },
         {
-            "name": "Industrias Trevor",
-            "value": "Industrias Trevor"
+            "name": "Metal Jackets MC",
+            "value": "Metal Jackets MC"
         },
         {
-            "name": "Familia O'Neil",
-            "value": "Familia O'Neil"
+            "name": "Kiodai",
+            "value": "Kiodai"
         },
         {
-            "name": "Irish Sons",
-            "value": "Irish Sons"
+            "name": "Royal Order",
+            "value": "Royal Order"
         },
         {
-            "name": "No Breaks",
-            "value": "No Breaks"
+            "name": "Orange Black Juice",
+            "value": "Orange Black Juice"
+        },
+        {
+            "name": "Shadow Femme",
+            "value": "Shadow Femme"
+        },
+        {
+            "name": "The Lost MC Sandy  Shores",
+            "value": "The Lost MC Sandy  Shores"
+        },
+        {
+            "name": "Purple Ice",
+            "value": "Purple Ice"
+        },
+        {
+            "name": "83 Criminals Gang",
+            "value": "83 Criminals Gang"
+        },
+        {
+            "name": "BlackWell",
+            "value": "BlackWell"
         }
     ]
 }
